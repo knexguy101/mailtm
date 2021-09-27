@@ -300,6 +300,7 @@ func (c *MailClient) MarkMessageAsSeen(id string) error {
 
 	defer res.Body.Close()
 
+
 	return nil
 }
 
