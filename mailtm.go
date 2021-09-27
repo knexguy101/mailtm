@@ -73,6 +73,7 @@ type AccountInfo struct {
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
 type MailClient struct {
+	T 			*http.Transport
 	URL         string
 	Email       string
 	Password    string
@@ -80,8 +81,9 @@ type MailClient struct {
 	Information AccountInfo
 }
 
-func NewMailClient() *MailClient {
+func NewMailClient(t *http.Transport) *MailClient {
 	return &MailClient{
+		T: t,
 		URL:      "https://api.mail.tm",
 		Email:    "",
 		Password: "",
@@ -102,7 +104,8 @@ func NewMailClient() *MailClient {
 }
 
 func (c *MailClient) GetAvailableDomains() ([]Domain, error) {
-	res, err := http.Get(c.URL + "/domains")
+	req, _ := http.NewRequest("GET", c.URL + "/domains", nil)
+	res, err := c.T.RoundTrip(req)
 	if err != nil {
 		return []Domain{}, errors.New("fetching domains from the mail.tm server failed")
 	}
@@ -128,11 +131,9 @@ func (c *MailClient) Register(username string, domain string, password string) e
 	c.Email = username + "@" + domain
 	c.Password = password
 
-	res, err := http.Post(
-		c.URL+"/accounts",
-		"application/json",
-		bytes.NewBuffer([]byte("{\"address\":\""+username+"@"+domain+"\",\"password\":\""+password+"\"}")),
-	)
+	req, _ := http.NewRequest("POST", c.URL+"/accounts", bytes.NewBuffer([]byte("{\"address\":\""+username+"@"+domain+"\",\"password\":\""+password+"\"}")))
+	req.Header.Add("Content-Type", "\"application/json\"")
+	res, err := c.T.RoundTrip(req)
 	if err != nil {
 		return errors.New("registering a new mail.tm account failed")
 	}
@@ -157,11 +158,9 @@ func (c *MailClient) Register(username string, domain string, password string) e
 }
 
 func (c *MailClient) Login() error {
-	res, err := http.Post(
-		c.URL+"/token",
-		"application/json",
-		bytes.NewBuffer([]byte("{\"address\":\""+c.Email+"\",\"password\":\""+c.Password+"\"}")),
-	)
+	req, _ := http.NewRequest("POST", c.URL+"/token", bytes.NewBuffer([]byte("{\"address\":\""+c.Email+"\",\"password\":\""+c.Password+"\"}")))
+	req.Header.Add("Content-Type", "\"application/json\"")
+	res, err := c.T.RoundTrip(req)
 	if err != nil {
 		return errors.New("logging in with account failed")
 	}
@@ -186,8 +185,6 @@ func (c *MailClient) Login() error {
 }
 
 func (c *MailClient) Delete() error {
-	var client = &http.Client{}
-
 	req, err := http.NewRequest("DELETE", c.URL+"/accounts/"+c.Information.Id, nil)
 	if err != nil {
 		return errors.New("deleting an account from the mail.tm server failed")
@@ -195,7 +192,7 @@ func (c *MailClient) Delete() error {
 
 	req.Header.Add("Authorization", "Bearer "+c.BearerToken)
 
-	res, err := client.Do(req)
+	res, err := c.T.RoundTrip(req)
 	if err != nil {
 		return errors.New("deleting a mail.tm account failed")
 	}
@@ -206,8 +203,6 @@ func (c *MailClient) Delete() error {
 }
 
 func (c *MailClient) GetMessages(page int) ([]Message, error) {
-	var client = &http.Client{}
-
 	req, err := http.NewRequest("GET", c.URL+"/messages?page="+strconv.Itoa(page), nil)
 	if err != nil {
 		return []Message{}, errors.New("creating a request to get an email from the mail.tm server failed")
@@ -215,7 +210,7 @@ func (c *MailClient) GetMessages(page int) ([]Message, error) {
 
 	req.Header.Add("Authorization", "Bearer "+c.BearerToken)
 
-	res, err := client.Do(req)
+	res, err := c.T.RoundTrip(req)
 	if err != nil {
 		return []Message{}, errors.New("getting an email from the mail.tm server failed")
 	}
@@ -238,7 +233,6 @@ func (c *MailClient) GetMessages(page int) ([]Message, error) {
 }
 
 func (c *MailClient) GetMessage(id string) (Message, error) {
-	var client = &http.Client{}
 
 	req, err := http.NewRequest("GET", c.URL+"/messages/"+id, nil)
 	if err != nil {
@@ -247,7 +241,7 @@ func (c *MailClient) GetMessage(id string) (Message, error) {
 
 	req.Header.Add("Authorization", "Bearer "+c.BearerToken)
 
-	res, err := client.Do(req)
+	res, err := c.T.RoundTrip(req)
 	if err != nil {
 		return Message{}, errors.New("getting a message from the mail.tm server failed")
 	}
@@ -270,7 +264,6 @@ func (c *MailClient) GetMessage(id string) (Message, error) {
 }
 
 func (c *MailClient) DeleteMessage(id string) error {
-	var client = &http.Client{}
 
 	req, err := http.NewRequest("DELETE", c.URL+"/messages/"+id, nil)
 	if err != nil {
@@ -279,7 +272,7 @@ func (c *MailClient) DeleteMessage(id string) error {
 
 	req.Header.Add("Authorization", "Bearer "+c.BearerToken)
 
-	res, err := client.Do(req)
+	res, err := c.T.RoundTrip(req)
 	if err != nil {
 		return errors.New("deleting a message from the mail.tm server failed")
 	}
@@ -311,7 +304,6 @@ func (c *MailClient) MarkMessageAsSeen(id string) error {
 }
 
 func (c *MailClient) GetMessageSource(id string) (string, error) {
-	var client = &http.Client{}
 
 	req, err := http.NewRequest("GET", c.URL+"/sources/"+id, nil)
 	if err != nil {
@@ -320,7 +312,7 @@ func (c *MailClient) GetMessageSource(id string) (string, error) {
 
 	req.Header.Add("Authorization", "Bearer "+c.BearerToken)
 
-	res, err := client.Do(req)
+	res, err := c.T.RoundTrip(req)
 	if err != nil {
 		return "", errors.New("getting the source of a message from the mail.tm server failed")
 	}
