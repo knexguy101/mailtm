@@ -1,3 +1,3 @@
-module github.com/felixstrobel/mailtm
+module github.com/knexguy101/mailtm
 
 go 1.16

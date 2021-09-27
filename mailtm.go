@@ -320,6 +320,7 @@ func (c *MailClient) GetMessageSource(id string) (string, error) {
 
 	defer res.Body.Close()
 
+	
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return "", errors.New("mail.tm server response is not readable")
